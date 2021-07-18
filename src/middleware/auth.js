@@ -24,7 +24,7 @@
 import {getAuth, onAuthStateChanged} from "firebase/auth";
 
 const authMiddleware = async function () {
-    let user = null
+    let user
     const auth = getAuth();
     await onAuthStateChanged(auth, async function (result) {
         user = result

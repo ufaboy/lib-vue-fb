@@ -14,7 +14,7 @@
     </header>
     <label class="label">
       <span class="title">name</span>
-      <input type="text" class="value" v-model.trim="localGenre.name" v-focus>
+      <input type="text" class="value" v-model.trim="localGenre.name" autofocus>
     </label>
     <label class="label">
       <span class="title">description</span>
@@ -34,6 +34,8 @@
 </template>
 
 <script>
+import { collection, addDoc, getDocs  } from "firebase/firestore";
+import {db} from '@/firebase.js'
 import IconClose from "@/components/icons/IconClose"
 export default {
   name: "EditGenre",
@@ -46,7 +48,7 @@ export default {
   data: () => ({
     localGenre: {
       id: null,
-      title: null,
+      name: null,
       description: null,
       parent_id: null,
       ad: null,
@@ -65,34 +67,53 @@ export default {
     }
   },
   mounted() {
+    this.getGenres()
   },
   methods: {
     async sendGenre() {
-      if (!this.localGenre.name) {
-        this.$toast.error('name not specified')
-        return;
-      }
-      let result, url = `/genre/create`;
-      const formData = {
-        name: this.localGenre.name,
-        description: this.localGenre.description,
-        ad: this.localGenre.ad,
-      }
-      if (this.localGenre.parent_id) {
-        formData.parent_id = this.localGenre.parent_id
-      }
-       if (this.localGenre.id) {
-        url = `/genre/update?id=${this.genre.id}`
-        result = await this.$patch(url, formData)
-      } else {
-        result = await this.$post(url, formData)
-      }
-      if (result) {
-
-        this.$emit('update-genres')
-        this.closeModal();
+      try {
+        const docRef = await addDoc(collection(db, "genres"), {
+          name: this.localGenre.name,
+          description: this.localGenre.description,
+        });
+        console.log("Document written with ID: ", docRef.id);
+      } catch (e) {
+        console.error("Error adding document: ", e);
       }
     },
+    async getGenres() {
+      console.log({db: db})
+      const querySnapshot = await getDocs(collection(db, "genres"));
+      querySnapshot.forEach((doc) => {
+        console.log(`${doc.id} => ${doc.data()}`);
+      });
+    },
+    // async sendGenre() {
+    //   if (!this.localGenre.name) {
+    //     this.$toast.error('name not specified')
+    //     return;
+    //   }
+    //   let result, url = `/genre/create`;
+    //   const formData = {
+    //     name: this.localGenre.name,
+    //     description: this.localGenre.description,
+    //     ad: this.localGenre.ad,
+    //   }
+    //   if (this.localGenre.parent_id) {
+    //     formData.parent_id = this.localGenre.parent_id
+    //   }
+    //    if (this.localGenre.id) {
+    //     url = `/genre/update?id=${this.genre.id}`
+    //     result = await this.$patch(url, formData)
+    //   } else {
+    //     result = await this.$post(url, formData)
+    //   }
+    //   if (result) {
+    //
+    //     this.$emit('update-genres')
+    //     this.closeModal();
+    //   }
+    // },
     async deleteGenre() {
       if (!this.genre.parent_id) {
         return false;

@@ -1,10 +1,5 @@
-// Firebase App (the core Firebase SDK) is always required and must be listed first
 import { initializeApp } from 'firebase/app';
-
-// Add the Firebase products that you want to use
-// eslint-disable-next-line no-unused-vars
-import { getAuth } from 'firebase/auth';
-// eslint-disable-next-line no-unused-vars
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -17,5 +12,18 @@ const firebaseConfig = {
     measurementId: "G-N8RL4647K4"
 }
 
-const firebaseApp = initializeApp(firebaseConfig);
+let firebaseApp = initializeApp(firebaseConfig);
+
+firebaseApp.getCurrentUser = () => {
+    const auth = getAuth();
+    return new Promise((resolve, reject) => {
+        const unsubscribe = onAuthStateChanged(auth, user => {
+            unsubscribe();
+            resolve(user);
+        }, reject);
+    })
+};
+
+export const db = getFirestore();
+
 export default firebaseApp

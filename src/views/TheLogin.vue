@@ -31,8 +31,8 @@
 import firebaseApp from "@/firebase";
 import {
   getAuth,
-  setPersistence,
-  browserSessionPersistence,
+  // setPersistence,
+  // browserSessionPersistence,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword
 } from "firebase/auth";
@@ -74,41 +74,68 @@ export default {
     },
     async sendForm() {
       const auth = getAuth(firebaseApp);
-        setPersistence(auth, browserSessionPersistence)
-            .then(() => {
-              if (this.signMode) {
-                return createUserWithEmailAndPassword(auth, this.email, this.password)
-                    .then((userCredential) => {
-                      const user = userCredential.user;
-                      console.log({user: user})
-                      this.$router.push('/')
-                    })
-                    .catch((error) => {
-                      const errorCode = error.code;
-                      const errorMessage = error.message;
-                      console.log({
-                        createUserWithEmailAndPassword: error,
-                        errorCode: errorCode,
-                        errorMessage: errorMessage
-                      })
-                    });
-              } else {
-                return signInWithEmailAndPassword(auth, this.email, this.password)
-                    .then(() => {
-                      this.$router.push('/')
-                    })
-                    .catch((error) => {
-                      const errorCode = error.code;
-                      const errorMessage = error.message;
-                      console.log({signInWithEmailAndPassword: error, errorCode: errorCode, errorMessage: errorMessage})
-                    })
-              }
+      if (this.signMode) {
+        return createUserWithEmailAndPassword(auth, this.email, this.password)
+            .then((userCredential) => {
+              const user = userCredential.user;
+              console.log({user: user})
+              this.$router.push('/')
             })
             .catch((error) => {
               const errorCode = error.code;
               const errorMessage = error.message;
-              console.log({setPersistence: error, errorCode: errorCode, errorMessage: errorMessage})
+              console.log({
+                createUserWithEmailAndPassword: error,
+                errorCode: errorCode,
+                errorMessage: errorMessage
+              })
             });
+      } else {
+        return signInWithEmailAndPassword(auth, this.email, this.password)
+            .then(() => {
+              this.$router.push('/')
+            })
+            .catch((error) => {
+              const errorCode = error.code;
+              const errorMessage = error.message;
+              console.log({signInWithEmailAndPassword: error, errorCode: errorCode, errorMessage: errorMessage})
+            })
+      }
+        // setPersistence(auth, browserSessionPersistence)
+        //     .then(() => {
+        //       if (this.signMode) {
+        //         return createUserWithEmailAndPassword(auth, this.email, this.password)
+        //             .then((userCredential) => {
+        //               const user = userCredential.user;
+        //               console.log({user: user})
+        //               this.$router.push('/')
+        //             })
+        //             .catch((error) => {
+        //               const errorCode = error.code;
+        //               const errorMessage = error.message;
+        //               console.log({
+        //                 createUserWithEmailAndPassword: error,
+        //                 errorCode: errorCode,
+        //                 errorMessage: errorMessage
+        //               })
+        //             });
+        //       } else {
+        //         return signInWithEmailAndPassword(auth, this.email, this.password)
+        //             .then(() => {
+        //               this.$router.push('/')
+        //             })
+        //             .catch((error) => {
+        //               const errorCode = error.code;
+        //               const errorMessage = error.message;
+        //               console.log({signInWithEmailAndPassword: error, errorCode: errorCode, errorMessage: errorMessage})
+        //             })
+        //       }
+        //     })
+        //     .catch((error) => {
+        //       const errorCode = error.code;
+        //       const errorMessage = error.message;
+        //       console.log({setPersistence: error, errorCode: errorCode, errorMessage: errorMessage})
+        //     });
     },
 
     // async login() {

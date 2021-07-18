@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import store from '@/store'
-import authMiddleware from "@/middleware/auth";
-// import {rolesMiddleware} from "@/middleware/roles";
+import firebaseApp from "@/firebase";
 
 import Home from '@/views/Home.vue'
 // const Home = () => import('@/views/Home.vue')
@@ -131,12 +130,13 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   const routeWithoutAuth = ['login', 'error']
-  const user = await authMiddleware()
-  console.log({'beforeEach': user })
-
-  if (!routeWithoutAuth.includes(to.name) && !user) {
+  const user = await firebaseApp.getCurrentUser()
+  if (!routeWithoutAuth.includes(to.name) && !await firebaseApp.getCurrentUser()) {
     next({ name: 'login' })
-  } else next()
+  } else {
+    console.log({user: user})
+    next();
+  }
 })
 
 router.onError(() => {
