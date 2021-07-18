@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import store from '@/store'
-
-import {authMiddleware} from "@/middleware/auth";
+import authMiddleware from "@/middleware/auth";
 // import {rolesMiddleware} from "@/middleware/roles";
 
 import Home from '@/views/Home.vue'
@@ -131,13 +130,13 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
-  await authMiddleware(to, from, next);
-  // await rolesMiddleware(to, from, next);
+  const routeWithoutAuth = ['login', 'error']
+  const user = await authMiddleware()
+  console.log({'beforeEach': user })
 
-  // const token = sessionStorage.getItem('lib-token') ?? ''
-  // const routeWithoutToken = ['login', 'error']
-  // if (!routeWithoutToken.includes(to.name) && !token) next({ name: 'login' })
-  // else next()
+  if (!routeWithoutAuth.includes(to.name) && !user) {
+    next({ name: 'login' })
+  } else next()
 })
 
 router.onError(() => {

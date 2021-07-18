@@ -51,6 +51,9 @@
 </template>
 
 <script>
+// import { ref, onMounted} from "vue";
+
+
 import TheSunrise from "../components/TheSunrise";
 
 export default {
@@ -61,6 +64,7 @@ export default {
     genreProps: Object,
     bookName: String,
   },
+  setup () {},
   data: () => ({
     activeBurger: false
   }),
@@ -95,6 +99,7 @@ export default {
     this.getUsername()
   },
   mounted() {
+
   },
   updated() {
   },

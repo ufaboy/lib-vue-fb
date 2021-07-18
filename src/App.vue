@@ -23,6 +23,7 @@
 import LayoutDefault from "@/layouts/LayoutDefault";
 import {defineAsyncComponent} from "vue";
 
+
 export default {
   components: {
     LayoutDefault,
@@ -30,6 +31,7 @@ export default {
     LayoutTest: defineAsyncComponent(() => import('@/layouts/LayoutTest.vue')),
     LayoutError: defineAsyncComponent(() => import('@/layouts/LayoutError.vue'))
   },
+
   data: () => ({
     parent: null,
     book: null,
