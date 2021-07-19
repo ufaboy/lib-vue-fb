@@ -30,15 +30,13 @@
     <modal ref="editGenre">
       <edit-genre :genre="activeGenre" @update-genres="loadGenres"/>
     </modal>
-<!--    <teleport to="body">-->
-<!--      <div v-if="modalOpen" class="modal">-->
-<!--        <edit-genre :genre="activeGenre" @update-genres="loadGenres"/>-->
-<!--      </div>-->
-<!--    </teleport>-->
   </div>
 </template>
 
 <script>
+// eslint-disable-next-line no-unused-vars
+import { collection, query, getDocs } from "firebase/firestore";
+import {db} from '@/firebase.js'
 import EditGenre from '@/components/EditGenre.vue'
 import IconSortAsc from '@/components/icons/IconSortAsc.vue'
 import IconSortDesc from '@/components/icons/IconSortDesc.vue'
@@ -69,12 +67,13 @@ export default {
   }),
   methods: {
     async loadGenres() {
-      this.$loader.show()
-      const result = await this.$get('/genre?type=all')
-      this.$loader.hide()
-      if (result) {
-        this.genres = result
-      } else console.log({'loadGenres': result})
+      const querySnapshot = await getDocs(collection(db, "genres"));
+      let genres = [];
+      querySnapshot.forEach((doc) => {
+        genres.push({id: doc.id, ...doc.data()})
+      });
+      this.genres = genres
+      console.log({querySnapshot: querySnapshot, genres: genres})
     },
     openRow(row) {
       this.activeGenre = row
@@ -112,7 +111,7 @@ export default {
   created() {
     document.title = 'Table Genres';
     if (this.genres.length === 0) {
-      // this.loadGenres()
+      this.loadGenres()
     }
   },
   mounted() {

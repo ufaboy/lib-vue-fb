@@ -2,14 +2,16 @@
   <form class="edit-genre" @submit.prevent="sendGenre">
     <header class="header">
       <h1>Genre</h1>
-        <button v-if="username === 'admin'"
-                type="button"
-                class="btn-switch btn"
-                :class="{'active': genre.ad}"
-                @click="localGenre.genre.ad = !genre.ad">ad
-        </button>
+      <button v-if="username === 'admin'"
+              type="button"
+              class="btn-switch btn"
+              :class="{'active': genre.ad}"
+              @click="localGenre.genre.ad = !genre.ad">ad
+      </button>
       <button class="close-btn" type="reset" @click="closeModal">
-        <base-icon class="icon" icon-name="close"><icon-close/></base-icon>
+        <base-icon class="icon" icon-name="close">
+          <icon-close/>
+        </base-icon>
       </button>
     </header>
     <label class="label">
@@ -23,7 +25,7 @@
     <label class="label">
       <span class="title">parent genre</span>
       <select class="select value" v-model="localGenre.parent_id">
-        <option v-for="genre of $store.state.genre.items" :key="genre.id" :value="genre.id">{{genre.name}}</option>
+        <option v-for="genre of $store.state.genre.items" :key="genre.id" :value="genre.id">{{ genre.name }}</option>
       </select>
     </label>
     <footer class="footer">
@@ -34,9 +36,10 @@
 </template>
 
 <script>
-import { collection, addDoc, getDocs  } from "firebase/firestore";
+import {collection, doc, addDoc, updateDoc , getDocs} from "firebase/firestore";
 import {db} from '@/firebase.js'
 import IconClose from "@/components/icons/IconClose"
+
 export default {
   name: "EditGenre",
   components: {IconClose},
@@ -72,11 +75,20 @@ export default {
   methods: {
     async sendGenre() {
       try {
-        const docRef = await addDoc(collection(db, "genres"), {
-          name: this.localGenre.name,
-          description: this.localGenre.description,
-        });
-        console.log("Document written with ID: ", docRef.id);
+        let result
+        if (this.genre.id) {
+          const washingtonRef = doc(db, "genres", this.genre.id);
+
+          await updateDoc(washingtonRef, {name: this.genre.name, description: this.genre.description, parent: this.genre.parent});
+        } else {
+          result = await addDoc(collection(db, "genres"), {
+            name: this.localGenre.name,
+            description: this.localGenre.description,
+          });
+        }
+
+        this.$emit('update-genres', result)
+        this.closeModal();
       } catch (e) {
         console.error("Error adding document: ", e);
       }
@@ -149,6 +161,7 @@ export default {
   height: 100%;
   width: 100%;
   color: var(--text2);
+
   .header {
     margin-bottom: 1rem;
     width: 100%;
@@ -161,6 +174,7 @@ export default {
     display: flex;
     width: 100%;
     justify-content: space-between;
+
     button:last-of-type {
       margin-right: 0;
     }
