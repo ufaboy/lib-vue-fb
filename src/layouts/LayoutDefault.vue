@@ -43,46 +43,37 @@
           <li class="breadcrumb-li">
             <router-link class="breadcrumb-link" to="/settings">Settings</router-link>
           </li>
+          <li class="breadcrumb-li">
+            <router-link class="breadcrumb-link" to="/login">LogOut</router-link>
+          </li>
         </ul>
       </div>
     </header>
-    <slot/>
+    <slot :divisions="divisions"/>
   </div>
 </template>
 
 <script>
 // import { ref, onMounted} from "vue";
-
-
 import TheSunrise from "../components/TheSunrise";
 
 export default {
   name: "LayoutDefault",
   components: {TheSunrise},
   props: {
-    parentProps: Object,
-    genreProps: Object,
     bookName: String,
   },
   setup () {},
   data: () => ({
-    activeBurger: false
+    activeBurger: false,
   }),
   methods: {
-    async loadParents() {
-      if (this.genresParent && this.genresParent.length === 0 && sessionStorage.getItem('lib-token')) {
-        await this.$store.dispatch('genre/loadGenres')
-      }
-    },
+
     getUsername() {
-      const username = sessionStorage.getItem('lib-username')
-      if (username) this.$store.commit('user/setUsername', username)
+
     }
   },
   computed: {
-    genresParent() {
-      return this.$store.state.genre.items
-    },
     isMobile() {
       return this.$store.state.main.isMobile
     },
@@ -94,8 +85,7 @@ export default {
     }
   },
   watch: {},
-  async created() {
-    await this.loadParents()
+  created() {
     this.getUsername()
   },
   mounted() {

@@ -22,10 +22,9 @@
       </thead>
       <tbody>
       <!--      <transition-group name="flip-list" tag="tbody">-->
-      <tr class="row" :class="{'picante': book.ad}" v-for="book of books.items" :key="book.id">
-        <td class="td" :class="columnsClasses.id" @click="openBook(book, 'edit')">{{ book.id }}</td>
+      <tr class="row" :class="{'picante': book.ad}" v-for="book of books" :key="book.id">
         <td class="td" :class="columnsClasses.name" @click="openBook(book, 'view')">{{ book.name }}</td>
-        <td class="td" :class="columnsClasses.annotation">{{ book.annotation }}</td>
+        <td class="td" :class="columnsClasses.annotation" @click="openBook(book, 'edit')">{{ book.annotation }}</td>
         <td class="td" :class="columnsClasses.genres">
           <div v-for="(genre, index) of book.genres" :key="index">{{ book.genres.length ? genre.name : '' }}</div>
         </td>
@@ -37,26 +36,26 @@
       <!--</transition-group>-->
       </tbody>
     </table>
-    <div class="table-paginator">
-      <button class="btn table-pag__btn" v-if="books._links.first"
-              @click="toPage(books._links.first)">first
-      </button>
-      <button class="btn table-pag__btn" v-if="books._links.prev"
-              @click="toPage(books._links.prev)">prev
-      </button>
-      <button class="btn table-pag__btn" v-if="books._links.self"
-              @click="toPage(books._links.self)">{{ books._meta ? books._meta.currentPage : '' }}
-      </button>
-      <button class="btn table-pag__btn" v-if="books._links.next"
-              @click="toPage(books._links.next)">next
-      </button>
-      <button class="btn table-pag__btn" v-if="books._links.last"
-              @click="toPage(books._links.last)">last
-      </button>
-      <select class="select" @change="getBooksPage" v-model="page" v-if="$store.state.main.isMobile">
-        <option :value="pageNum" v-for="(pageNum, index) of pagBtnArr" :key="'page-' + index">{{ pageNum }}</option>
-      </select>
-    </div>
+<!--    <div class="table-paginator">-->
+<!--      <button class="btn table-pag__btn" v-if="books._links.first"-->
+<!--              @click="toPage(books._links.first)">first-->
+<!--      </button>-->
+<!--      <button class="btn table-pag__btn" v-if="books._links.prev"-->
+<!--              @click="toPage(books._links.prev)">prev-->
+<!--      </button>-->
+<!--      <button class="btn table-pag__btn" v-if="books._links.self"-->
+<!--              @click="toPage(books._links.self)">{{ books._meta ? books._meta.currentPage : '' }}-->
+<!--      </button>-->
+<!--      <button class="btn table-pag__btn" v-if="books._links.next"-->
+<!--              @click="toPage(books._links.next)">next-->
+<!--      </button>-->
+<!--      <button class="btn table-pag__btn" v-if="books._links.last"-->
+<!--              @click="toPage(books._links.last)">last-->
+<!--      </button>-->
+<!--      <select class="select" @change="getBooksPage" v-model="page" v-if="$store.state.main.isMobile">-->
+<!--        <option :value="pageNum" v-for="(pageNum, index) of pagBtnArr" :key="'page-' + index">{{ pageNum }}</option>-->
+<!--      </select>-->
+<!--    </div>-->
     <modal ref="filterBookModal">
       <filter-modal @active-filter="updateFilterPage"
                     @reset-filter="resetTable"
@@ -69,6 +68,8 @@
 
 <script>
 import {mapState} from "vuex";
+import { collection, getDocs } from "firebase/firestore";
+import {db} from "@/firebase";
 import IconSortAsc from '@/components/icons/IconSortAsc.vue'
 import IconSortDesc from '@/components/icons/IconSortDesc.vue'
 import FilterModal from '@/components/FilterModal.vue'
@@ -80,11 +81,7 @@ export default {
   components: {FilterModal, IconSortAsc, IconSortDesc},
   props: {},
   data: () => ({
-    books: {
-      items: [],
-      _links: {},
-      _meta: {},
-    },
+    books: [],
     bookName: null,
     filter: {
       genre: null,
@@ -96,9 +93,8 @@ export default {
     limit: 10,
     ascending: 0,
     orderBy: null,
-    columns: ['id', 'name', 'annotation', 'genres', 'rating', 'view_count', 'last_read', 'updated_at'],
+    columns: ['name', 'annotation', 'genres', 'rating', 'view_count', 'last_read', 'updated_at'],
     columnsClasses: {
-      id: 'cell-id',
       name: 'cell-name',
       annotation: 'cell-annotation',
       genres: 'cell-genre',
@@ -119,7 +115,8 @@ export default {
       return date ? date.toLocaleString('ru-RU', {year: '2-digit', month: '2-digit', day: 'numeric'}) : null
     },
     async openBook(book, type) {
-      const comicsBook = book.genres.findIndex(genre => genre.parent.name === 'comics') > -1
+      console.log({book: book})
+      const comicsBook = book.genres.findIndex(genre => genre.division === 'comics') > -1
       await this.$router.push({
         name: type === 'edit' ? 'book-edit' : comicsBook ? 'book-media' : 'book-view',
         params: {id: book.id}
@@ -142,28 +139,34 @@ export default {
       this.getBooksPage()
     },
     async getBooksPage() {
-      let url = `/book?page=${this.page}&limit=${this.limit}&sort=${this.ascending ? '' : '-'}${this.orderBy ? this.orderBy : 'id'}`
-      if (this.bookName) {
-        url += `&name=${this.bookName}`
-      }
-      if (this.filter.genre) {
-        url += `&genre_id=${this.filter.genre.id}`
-      }
-      if (this.filter.rating) {
-        url += `&rating=${this.filter.rating}`
-      }
-      if (Number.isInteger(this.filter.ad)) {
-        url += `&ad=${this.filter.ad}`
-      }
-      this.$loader.show()
-      const result = await this.$get(url);
-      this.$loader.hide()
-      if (result) {
-        this.books = result
-        this.page = result._meta.currentPage
-        // const count = result._meta.pageCount
-        this.pagBtnArr = Array.from({length: result._meta.pageCount}, (v, k) => k + 1);
-      }
+      const bookSnapshot = await getDocs(collection(db, "books"));
+      bookSnapshot.forEach((doc) => {
+        const book = {...doc.data()}
+        this.books.push({id: doc.id, genres: book.genres ?? [], ...book })
+        console.log(`${doc.id} => ${doc.data()}`);
+      });
+      // let url = `/book?page=${this.page}&limit=${this.limit}&sort=${this.ascending ? '' : '-'}${this.orderBy ? this.orderBy : 'id'}`
+      // if (this.bookName) {
+      //   url += `&name=${this.bookName}`
+      // }
+      // if (this.filter.genre) {
+      //   url += `&genre_id=${this.filter.genre.id}`
+      // }
+      // if (this.filter.rating) {
+      //   url += `&rating=${this.filter.rating}`
+      // }
+      // if (Number.isInteger(this.filter.ad)) {
+      //   url += `&ad=${this.filter.ad}`
+      // }
+      // this.$loader.show()
+      // const result = await this.$get(url);
+      // this.$loader.hide()
+      // if (result) {
+      //   this.books = result
+      //   this.page = result._meta.currentPage
+      //   // const count = result._meta.pageCount
+      //   this.pagBtnArr = Array.from({length: result._meta.pageCount}, (v, k) => k + 1);
+      // }
     },
     sortBy(orderBy, asc) {
       this.orderBy = orderBy

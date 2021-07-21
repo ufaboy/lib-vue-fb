@@ -2,7 +2,7 @@
   <form class="genre-book" @submit.prevent="sendGenre">
     <header class="modal-header">
       <h1>Genre</h1>
-      <span>{{genres.length}}</span>
+      <span>{{ genres.length }}</span>
       <button class="close-btn" type="reset" @click="closeModal">
         <base-icon class="icon" icon-name="close">
           <icon-close/>
@@ -10,23 +10,25 @@
       </button>
     </header>
     <fieldset class="genre-titles">
-      <legend>selected: {{selectedGenre.length}}</legend>
+      <legend>selected: {{ selectedGenre.length }}</legend>
       <span v-if="selectedGenre.length === 0">Не выбраны жанры</span>
-      <span class="fieldset-genre" :style="{color: colorizeGenre(index)}" v-for="(genre, index) of selectedGenre" :key="genre.id">{{genre.name}}</span>
+      <span class="fieldset-genre" :style="{color: colorizeGenre(index)}" v-for="(genre, index) of selectedGenre"
+            :key="genre.id">{{ genre.name }}</span>
     </fieldset>
-    <fieldset class="genres" v-if="$store.state.main.isDesktop">
+    <fieldset class="genres" v-if="main.isDesktop">
       <legend>all genres</legend>
-      <div class="parent" :class="{'checked-childes': calcCheckedChildes(parent)}" v-for="parent of parentGenres" :key="parent.id" @click="activeParent = Number(parent.id)">
-        <div class="parent-title">{{parent.name}}</div>
-        <label class="checkbox-container" v-for="genre of parent.childes" :key="genre.id">{{ genre.name }}
+      <div class="parent" :class="{'checked-childes': calcCheckedChildes(division)}"
+           v-for="(division, index) of divisionsWithChildes" :key="division + index">
+        <div class="parent-title">{{ division.name }}</div>
+        <label class="checkbox-container" v-for="genre of division.childGenres" :key="genre.id">{{ genre.name }}
           <input type="checkbox" :value="genre" v-model="selectedGenre">
           <span class="checkmark"></span>
         </label>
       </div>
     </fieldset>
-    <select class="select-genre" multiple v-model="genres" size="1" v-if="$store.state.main.isMobile">
-      <optgroup v-for="parent of parentGenres" :key="parent.id" :label="parent.name">
-        <option v-for="genre of parent.childes" :key="genre.id">{{ genre.nane }}</option>
+    <select class="select-genre" multiple v-model="selectedGenre" size="1" v-if="main.isMobile">
+      <optgroup v-for="division of divisionsWithChildes" :key="division + index" :label="division.name">
+        <option v-for="(genre, index) of division.childGenres" :key="genre.name + index">{{ genre.name }}</option>
       </optgroup>
     </select>
     <footer class="footer">
@@ -37,7 +39,11 @@
 </template>
 
 <script>
+import { mapState } from 'vuex';
 import IconClose from "@/components/icons/IconClose"
+import {collection, getDocs} from "firebase/firestore";
+import {db} from '@/firebase.js'
+
 export default {
   name: "GenreBook",
   components: {IconClose},
@@ -46,19 +52,20 @@ export default {
     genresProps: Array,
   },
   data: () => ({
-    activeParent: '',
     searchField: '',
     selectedGenre: [],
     genres: [],
+    divisions: [],
+    divisionsWithChildes: [],
   }),
   computed: {
-    parentGenres() {
-      return this.$store.state.genre.items
-    }
+    ...mapState({
+      main: state => state.main,
+    }),
   },
   watch: {},
   created() {
-    this.loadGenres()
+    this.calcDivisionsWithChildes()
   },
   mounted() {
 
@@ -68,19 +75,23 @@ export default {
       this.$emit('set-genres', this.selectedGenre)
       this.closeModal()
     },
-
     calcCheckedChildes(e) {
-      return e.childes.find(item => this.genres.map(genre => genre.id).includes(item.id))
+      return e.childGenres.find(item => this.selectedGenre.map(genre => genre.name).includes(item.name))
     },
-    async loadGenres() {
-      if (this.$store.state.genre.items.length === 0) {
-        await this.$store.dispatch('genre/loadGenres')
-      }
-      this.genres = this.$store.state.genre.items.map(a => ({...a}))
-      this.selectedGenre = this.genresProps.map(a => ({...a}))
+    async calcDivisionsWithChildes() {
+      const genresSnapshot = await getDocs(collection(db, "genres"));
+      genresSnapshot.forEach((doc) => {
+        const genre = {...doc.data()}
+        const divisionIndex = this.divisionsWithChildes.findIndex(item => item.name === genre.division)
+        if (divisionIndex > -1) {
+          this.divisionsWithChildes[divisionIndex].childGenres.push(genre)
+        } else {
+          this.divisionsWithChildes.push({name: genre.division, childGenres: [genre]})
+        }
+      });
     },
     colorizeGenre(i) {
-      const color = ['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE', 'DeepSkyBlue', 'PURPLE', ]
+      const color = ['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE', 'DeepSkyBlue', 'PURPLE',]
       return color[i]
     },
     reset() {
@@ -101,6 +112,7 @@ export default {
   height: 100%;
   width: 100%;
   color: var(--color-2);
+
   .modal-header {
     display: flex;
     flex-flow: row nowrap;
@@ -108,10 +120,12 @@ export default {
     margin-bottom: 1rem;
     width: 100%;
   }
+
   .search-field {
     width: 100%;
     margin-bottom: 0.5rem;
   }
+
   .genre-titles {
     width: 100%;
     overflow: hidden;
@@ -120,15 +134,18 @@ export default {
     margin-bottom: 0.5rem;
     padding: 0.5rem;
   }
+
   .fieldset-genre {
     margin-right: 5px;
   }
+
   .genres {
     display: flex;
     flex-flow: row nowrap;
     width: 100%;
     padding: 0.5rem;
   }
+
   .parent {
     cursor: pointer;
     margin: 0 0.5rem 0.5rem 0;
@@ -139,12 +156,14 @@ export default {
       margin-bottom: 0.5rem;
     }
   }
+
   .parent.checked-childes {
     .parent-title {
-      color: var(--color-p);
+      color: var(--brand);
     }
 
   }
+
   .checkbox-container {
     margin-bottom: 0.5rem;
     text-overflow: ellipsis;
@@ -152,21 +171,25 @@ export default {
     overflow: hidden;
     white-space: nowrap;
   }
+
   .select-genre {
     width: 100%;
     margin-bottom: 1rem;
   }
+
   .footer {
     display: flex;
     justify-content: space-around;
     margin-top: 1rem;
     width: 100%;
   }
+
   button {
     display: flex;
     align-items: center;
   }
 }
+
 @media only screen and (min-width: 412px) and (max-width: 892px) and (orientation: landscape) {
   .genre-book {
   }

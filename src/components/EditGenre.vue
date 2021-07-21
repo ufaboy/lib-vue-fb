@@ -23,9 +23,9 @@
       <textarea class="value textarea" v-model.trim="localGenre.description" rows="5"></textarea>
     </label>
     <label class="label">
-      <span class="title">parent genre</span>
-      <select class="select value" v-model="localGenre.parent_id">
-        <option v-for="genre of $store.state.genre.items" :key="genre.id" :value="genre.id">{{ genre.name }}</option>
+      <span class="title">division</span>
+      <select class="select value" v-model="localGenre.division">
+        <option v-for="(division, index) of divisions" :key="index" :value="division.name">{{ division.name }}</option>
       </select>
     </label>
     <footer class="footer">
@@ -53,9 +53,10 @@ export default {
       id: null,
       name: null,
       description: null,
-      parent_id: null,
+      division: null,
       ad: null,
     },
+    divisions: []
   }),
   computed: {
     username() {
@@ -65,9 +66,7 @@ export default {
   watch: {},
   created() {
     this.prepareGenre()
-    if (this.$store.state.genre.items.length === 0) {
-      this.$store.dispatch('genre/loadGenres')
-    }
+    this.loadDivisions()
   },
   mounted() {
     this.getGenres()
@@ -75,16 +74,14 @@ export default {
   methods: {
     async sendGenre() {
       try {
-        let result
+        let result;
+        const genreForm = {name: this.localGenre.name, description: this.localGenre.description, division: this.localGenre.division, ad: this.localGenre.ad}
+        console.log({genreForm: genreForm, id: this.genre.id})
         if (this.genre.id) {
           const washingtonRef = doc(db, "genres", this.genre.id);
-
-          await updateDoc(washingtonRef, {name: this.genre.name, description: this.genre.description, parent: this.genre.parent});
+          await updateDoc(washingtonRef, {...genreForm});
         } else {
-          result = await addDoc(collection(db, "genres"), {
-            name: this.localGenre.name,
-            description: this.localGenre.description,
-          });
+          result = await addDoc(collection(db, "genres"), {...genreForm});
         }
 
         this.$emit('update-genres', result)
@@ -148,6 +145,12 @@ export default {
     },
     prepareGenre() {
       this.localGenre = Object.assign({}, this.genre)
+    },
+    async loadDivisions() {
+      const divisions = await getDocs(collection(db, "divisions"));
+      divisions.forEach((doc) => {
+        this.divisions.push(doc.data())
+      });
     },
   },
 }

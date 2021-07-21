@@ -20,10 +20,9 @@
       <transition-group name="flip-list" tag="tbody">
         <tr class="row" :class="{picante: genre.ad, parent: genre.parent === null}" v-for="genre of genres" :key="genre.id"
             @click="openRow(genre)">
-          <td class="td" :class="columnsClasses.id">{{ genre.id }}</td>
           <td class="td" :class="columnsClasses.title">{{ genre.name }}</td>
           <td class="td" :class="columnsClasses.description">{{ genre.description }}</td>
-          <td class="td" :class="columnsClasses.parent">{{ genre.parent ? genre.parent.name : '' }}</td>
+          <td class="td" :class="columnsClasses.division">{{ genre.division ? genre.division : '' }}</td>
         </tr>
       </transition-group>
     </table>
@@ -50,19 +49,16 @@ export default {
       id: null,
       name: null,
       description: null,
-      parentGenre: {id: null, name: null},
-      parent: {id: null, name: null},
     },
     modalOpen: false,
     genres: [],
     ascending: 1,
     orderBy: null,
-    columns: ['id', 'name', 'description', 'parent'],
+    columns: ['name', 'description', 'division'],
     columnsClasses: {
-      id: 'cell-id',
       name: 'cell-name',
       description: 'cell-description',
-      parent: 'cell-parent'
+      division: 'cell-division'
     },
   }),
   methods: {
@@ -81,11 +77,10 @@ export default {
     },
     createGenre() {
       this.activeGenre = {
-        id: null,
         name: null,
         description: null,
-        parentGenre: {id: null, name: null},
-        parent: {id: null, name: null},
+        division: null,
+        ad: null
       };
       this.$modal.show('editGenre', this)
     },

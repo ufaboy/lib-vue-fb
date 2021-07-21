@@ -49,7 +49,7 @@
           <span class="value genre-span"
                 :style="{color: colorizeGenre(index)}"
                 v-for="(genre, index) of genres"
-                :key="genre.id">
+                :key="index">
             {{ genre.name }}
           </span>
         </div>
@@ -129,6 +129,9 @@
 </template>
 
 <script>
+import {collection, addDoc, updateDoc, doc, getDoc } from "firebase/firestore";
+import {db} from '@/firebase.js'
+
 import StarRating from 'vue-star-rating'
 import IconParagraph from '@/components/icons/IconParagraph.vue'
 import IconCarriage from '@/components/icons/IconCarriage.vue'
@@ -144,8 +147,8 @@ export default {
   data: () => ({
     files: [],
     uploadingProgress: [],
+    bookId: null,
     book: {
-      id: null,
       name: null,
       annotation: '',
       text: '',
@@ -170,24 +173,24 @@ export default {
       return this.uploadingProgress[index]
     },
     async sendBook() {
-      const check = await this.checkBook()
-      if (!check) {
+      if (!await this.checkBook()) {
         return false
       }
       let result;
-      let url = `/book/create`
-      const formData = {...this.book, genres: this.genres.map(item => item.id)}
       this.$loader.show()
-      if (this.$route.params.id) {
-        url = `/book/update?id=${this.$route.params.id}`
-        result = await this.$patch(url, formData)
-      } else {
-        result = await this.$post(url, formData)
+      try {
+        if (this.bookId) {
+          const bookRef = doc(db, "books", this.bookId);
+          result = await updateDoc(bookRef, {...this.book, genres: this.genres});
+        } else {
+          result = await addDoc(collection(db, "books"), {...this.book, genres: this.genres});
+        }
+        this.$loader.hide()
+        console.log("Document written with ID: ", result);
+      } catch (e) {
+        console.error("Error adding document: ", e);
       }
       this.$loader.hide()
-      if (result) {
-        this.$router.replace('/book')
-      }
     },
     resetBook() {
       this.book = {
@@ -204,7 +207,7 @@ export default {
       }
       this.genres = []
     },
-    async checkBook() {
+    checkBook() {
       let validation = true
       let messages = []
       if (!this.book.name) {
@@ -217,23 +220,36 @@ export default {
       }
       if (!validation) {
         this.$toast.error(messages);
+        return Promise.reject(validation)
       }
-      return validation
+      return Promise.resolve(validation)
     },
     async getBook() {
       if (this.$route.params.id) {
-        const url = `/book/view?id=${this.$route.params.id}`
-        const result = await this.$get(url)
-        if (result) {
-          // this.book = Object.assign({}, result)
-          this.book = {...result, annotation: result.annotation ? result.annotation : ''}
-          this.genres = [...result.genres]
-          this.files.push(...result.files)
-          await this.$nextTick()
-          this.autoResize()
+        const docRef = doc(db, "books", this.$route.params.id);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const book = docSnap.data()
+          this.bookId = docSnap.id
+          this.genres = [...book.genres]
+          console.log("Document data:", );
+          this.book = {...book}
         } else {
-          console.log(result)
+          console.log("No such document!");
         }
+        // const url = `/book/view?id=${this.$route.params.id}`
+        // const result = await this.$get(url)
+        // if (result) {
+        //   // this.book = Object.assign({}, result)
+        //   this.book = {...result, annotation: result.annotation ? result.annotation : ''}
+        //   this.genres = [...result.genres]
+        //   this.files.push(...result.files)
+        //   await this.$nextTick()
+        //   this.autoResize()
+        // } else {
+        //   console.log(result)
+        // }
       } else {
         return false
       }

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import store from '@/store'
 import firebaseApp from "@/firebase";
+import { getAuth, signOut } from "firebase/auth";
 
 import Home from '@/views/Home.vue'
 // const Home = () => import('@/views/Home.vue')
@@ -26,6 +27,14 @@ const routes = [
     path: '/login',
     name: 'login',
     component: () => import('@/views/TheLogin.vue'),
+    beforeEnter: (to, from, next) => {
+      const auth = getAuth();
+      signOut(auth).then(() => {
+        next()
+      }).catch((error) => {
+        console.error({error: error})
+      });
+    },
     meta: {
       layout: 'layout-auth'
     }

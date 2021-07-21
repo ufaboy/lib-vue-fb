@@ -3,7 +3,7 @@
   <nav class="nav">
     <router-link class="content-link"
                :to="{ name: 'list-genre', params: { id: genre.id }}"
-               v-for="genre of parentsArr"
+               v-for="genre of divisions"
                :key="genre.id">{{ genre.name }}
     </router-link>
   </nav>
@@ -11,19 +11,26 @@
 </template>
 
 <script>
+import { collection, getDocs } from "firebase/firestore";
+import {db} from "../firebase";
+
 export default {
   name: 'Home',
   components: {},
-  props: {},
+  props: {
+  },
   data: () => ({
+    divisions: []
   }),
   methods: {
-
+    async loadDivisions() {
+      const divisions = await getDocs(collection(db, "divisions"));
+      divisions.forEach((doc) => {
+        this.divisions.push(doc.data())
+      });
+    },
   },
   computed: {
-    parentsArr() {
-      return this.$store.state.genre.items
-    },
     isDesktop() {
       return this.$store.state.main.isDesktop
     }
@@ -31,6 +38,7 @@ export default {
   watch: {},
   created() {
     document.title = 'Home';
+    this.loadDivisions()
   },
   mounted() {
 
