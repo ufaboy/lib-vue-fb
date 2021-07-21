@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAr8fuTEOIZRzH9VQSiPl9kuHRPoLUK9Ew",
@@ -25,5 +26,7 @@ firebaseApp.getCurrentUser = () => {
 };
 
 export const db = getFirestore();
+
+export const storage = getStorage(firebaseApp);
 
 export default firebaseApp

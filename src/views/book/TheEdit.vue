@@ -56,7 +56,7 @@
       </section>
       <div class="label">
         <span class="label-header">
-          <span class="title">text {{ book.text ? book.text.length : '' }}</span>
+          <span class="title">text {{ text ? text.length : '' }}</span>
           <span class="action-bar">
           <button class="editor-btn" type="button" @click="toggleEditor">{{ editor }}</button>
           <button class="editor-btn" type="button" @click="formatText('caret')" data-tooltip="переносы строк">
@@ -77,12 +77,12 @@
         </span>
         </span>
         <textarea class="editor clarity"
-                  v-model="book.text"
+                  v-model="text"
                   v-if="editor === 'raw'"
                   ref="editor"
                   @input="autoResize"
         ></textarea>
-        <div class="editor" contenteditable="true" v-else v-html="book.text"></div>
+        <div class="editor" contenteditable="true" v-else v-html="text"></div>
       </div>
     </div>
     <div class="media-container" v-if="book.id">
@@ -100,14 +100,18 @@
       <div class="media-wrapper">
         <figure class="figure" v-for="(media, index) of files" :key="'origy' + index">
           <div class="action-panel">
-            <button class="image-entry-btn btn--green" @click="sendFile(media, index)" v-if="media.id === undefined">load</button>
+            <button class="image-entry-btn btn--green" @click="sendFile(media, index)" v-if="media.id === undefined">
+              load
+            </button>
             <button class="image-entry-btn"
                     @click="book.cover_id = media.id"
                     v-if="media.type === 'image/webp' && media.id !== undefined">
               {{ book.cover_id === media.id ? 'current' : 'set' }}cover
             </button>
-            <button class="image-entry-btn btn--green" @click="copyFileName(media)" v-if="media.id !== undefined">tag</button>
-            <button class="image-entry-btn btn--red" @click="deleteFile(index)" v-if="media.id !== undefined">delete</button>
+            <button class="image-entry-btn btn--green" @click="copyFileName(media)" v-if="media.id !== undefined">tag
+            </button>
+            <button class="image-entry-btn btn--red" @click="deleteFile(index)" v-if="media.id !== undefined">delete
+            </button>
           </div>
           <progress-ring v-show="calcProgressUpload(index) < 100 && calcProgressUpload(index) > 0" :radius="60"
                          :progress="calcProgressUpload(index)" :stroke="10" :color="'#ff2400'"/>
@@ -129,7 +133,9 @@
 </template>
 
 <script>
-import {collection, addDoc, updateDoc, doc, getDoc } from "firebase/firestore";
+import {collection, addDoc, updateDoc, doc, getDoc} from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import {storage} from "@/firebase.js";
 import {db} from '@/firebase.js'
 
 import StarRating from 'vue-star-rating'
@@ -151,13 +157,13 @@ export default {
     book: {
       name: null,
       annotation: '',
-      text: '',
       source: null,
       cover: null,
       rating: null,
       ad: null,
       files: [],
     },
+    text: '',
     genres: [],
     editor: 'raw',
     expandText: false,
@@ -176,21 +182,55 @@ export default {
       if (!await this.checkBook()) {
         return false
       }
-      let result;
+
       this.$loader.show()
       try {
+        let result;
         if (this.bookId) {
           const bookRef = doc(db, "books", this.bookId);
           result = await updateDoc(bookRef, {...this.book, genres: this.genres});
         } else {
           result = await addDoc(collection(db, "books"), {...this.book, genres: this.genres});
         }
+        console.log({"Document written with ID: ": result});
+        const savedText = await this.saveTextToFile(this.bookId ? this.bookId : result.id)
         this.$loader.hide()
-        console.log("Document written with ID: ", result);
+        console.log({"Document written with ID: ": result, savedText: savedText});
       } catch (e) {
         console.error("Error adding document: ", e);
       }
       this.$loader.hide()
+    },
+    async saveTextToFile(bookId) {
+      const textBlob = new Blob([this.text], {
+        type: 'text/html'
+      });
+      const storageRef = ref(storage, 'books');
+      const bookTextRef = ref(storage, `books/book-${bookId}`);
+      uploadBytes(bookTextRef, textBlob).then((snapshot) => {
+        this.downloadText(snapshot)
+        console.log({'Uploaded a blob or file!':snapshot});
+      });
+      console.log({textBlob: textBlob, storageRef: storageRef, bookTextRef: bookTextRef})
+    },
+    downloadText(snapshot) {
+      getDownloadURL(ref(snapshot))
+          .then((url) => {
+            // `url` is the download URL for 'images/stars.jpg'
+
+            // This can be downloaded directly:
+            const xhr = new XMLHttpRequest();
+            xhr.responseType = 'blob';
+            xhr.onload = (event) => {
+              const blob = xhr.response;
+              console.log({event: event, blob: blob})
+            };
+            xhr.open('GET', url);
+            xhr.send();
+          })
+          .catch((error) => {
+            console.log(error)
+          });
     },
     resetBook() {
       this.book = {
@@ -233,7 +273,7 @@ export default {
           const book = docSnap.data()
           this.bookId = docSnap.id
           this.genres = [...book.genres]
-          console.log("Document data:", );
+          console.log("Document data:",);
           this.book = {...book}
         } else {
           console.log("No such document!");
@@ -359,9 +399,9 @@ export default {
     },
     async formatText(type) {
       if (type === 'caret') {
-        this.book.text = this.book.text.replace(/\n/g, '<p>')
+        this.text = this.text.replace(/\n/g, '<p>')
       } else if (type === 'double-p') {
-        this.book.text = this.book.text.replace(/<p><p>/g, '<p>')
+        this.text = this.text.replace(/<p><p>/g, '<p>')
       } else if (type === 'comment') {
         let selectionText = this.$refs.editor.value.substring(this.$refs.editor.selectionStart, this.$refs.editor.selectionEnd);
         if (selectionText.includes('<!-- ') && selectionText.includes(' -->')) {
@@ -534,17 +574,20 @@ export default {
       width: 100%;
       margin-bottom: 1rem;
       align-items: center;
+
       .btn-tab--left, .btn-tab--right {
         display: flex;
         flex-flow: row nowrap;
         justify-content: space-between;
 
       }
+
       .btn-tab--left {
         :first-child {
           margin-right: 1rem;
         }
       }
+
       .btn-tab--right {
         .vue-star-rating {
           margin-right: 1rem;
@@ -745,6 +788,7 @@ export default {
       .upload-dropbox {
         margin-right: 0.5rem;
       }
+
       .positive-btn {
         margin-right: 0.5rem;
       }
@@ -809,6 +853,7 @@ export default {
             border-radius: 3px;
             cursor: pointer;
           }
+
           .loader-ring {
             width: 120px;
             height: 120px;
@@ -829,6 +874,7 @@ export default {
           cursor: pointer;
           margin-top: 0.5rem;
         }
+
         .ring {
           top: calc(50% - 72px);
           left: calc(50% - 60px);
@@ -985,9 +1031,11 @@ export default {
           display: none;
         }
       }
+
       .btn-tab--left, .btn-tab--right {
         width: 100%;
       }
+
       .btn-tab--left {
         margin-bottom: 0.5rem;
       }
