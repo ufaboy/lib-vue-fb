@@ -134,10 +134,11 @@
 
 <script>
 import {collection, addDoc, updateDoc, doc, getDoc} from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import {ref, uploadBytes, getDownloadURL} from "firebase/storage";
 import {storage} from "@/firebase.js";
 import {db} from '@/firebase.js'
 
+import translit from "@/service/translit";
 import StarRating from 'vue-star-rating'
 import IconParagraph from '@/components/icons/IconParagraph.vue'
 import IconCarriage from '@/components/icons/IconCarriage.vue'
@@ -157,6 +158,7 @@ export default {
     book: {
       name: null,
       annotation: '',
+      textLink: '',
       source: null,
       cover: null,
       rating: null,
@@ -182,54 +184,80 @@ export default {
       if (!await this.checkBook()) {
         return false
       }
-
       this.$loader.show()
       try {
         let result;
+        let linkSavedText;
         if (this.bookId) {
           const bookRef = doc(db, "books", this.bookId);
-          result = await updateDoc(bookRef, {...this.book, genres: this.genres});
+          linkSavedText = await this.saveTextToFile(this.book.textLink)
+          if (linkSavedText) {
+            this.book.textLink = linkSavedText
+            result = await updateDoc(bookRef, {...this.book, genres: this.genres});
+          }
+
         } else {
-          result = await addDoc(collection(db, "books"), {...this.book, genres: this.genres});
+          linkSavedText = await this.saveTextToFile()
+          if (linkSavedText) {
+            this.book.textLink = linkSavedText
+            result = await addDoc(collection(db, "books"), {...this.book, genres: this.genres});
+          }
         }
-        console.log({"Document written with ID: ": result});
-        const savedText = await this.saveTextToFile(this.bookId ? this.bookId : result.id)
+
         this.$loader.hide()
-        console.log({"Document written with ID: ": result, savedText: savedText});
+        console.log({result: result, linkSavedText: linkSavedText})
       } catch (e) {
         console.error("Error adding document: ", e);
       }
       this.$loader.hide()
     },
-    async saveTextToFile(bookId) {
-      const textBlob = new Blob([this.text], {
+    async saveTextToFile(oldTextRef) {
+      const textBlob = new Blob([JSON.stringify(this.text)], {
         type: 'text/html'
       });
-      const storageRef = ref(storage, 'books');
-      const bookTextRef = ref(storage, `books/book-${bookId}`);
-      uploadBytes(bookTextRef, textBlob).then((snapshot) => {
-        this.downloadText(snapshot)
-        console.log({'Uploaded a blob or file!':snapshot});
+      // const bookTextRef = await this.calcBookTextRef(oldTextRef)
+      const bookTextRef = oldTextRef ? oldTextRef : ref(storage, `books/book-${await translit(this.book.name)}-${Date.now()}`)
+      console.log({bookTextRef: bookTextRef})
+      return uploadBytes(bookTextRef, textBlob).then(async (snapshot) => {
+        const result = await this.downloadText(snapshot.ref)
+        if (result) {
+          return Promise.resolve(snapshot.ref.fullPath)
+        } else return Promise.reject({'uploadBytes': result})
       });
-      console.log({textBlob: textBlob, storageRef: storageRef, bookTextRef: bookTextRef})
     },
-    downloadText(snapshot) {
-      getDownloadURL(ref(snapshot))
-          .then((url) => {
-            // `url` is the download URL for 'images/stars.jpg'
+    // async calcBookTextRef(oldTextRef) {
+    //   if (oldTextRef) {
+    //     return oldTextRef
+    //   } else {
+    //     let bookName = `books/book-${await translit(this.book.name)}`
+    //     let bookTextRef = ref(storage, bookName)
+    //     bookTextRef.getMetadata()
+    //         .addOnSuccessListener( ()=>{
+    //           return ref(storage, bookName)}
+    //   )
+    //         .addOnFailureListener({
+    //           //File do not exist
+    //           UploadTask uploadTask = uploadRef.putFile(file);
+    //         })
+    //     storage.child(bookName).then(
+    //         bookName = `books/book-${await translit(this.book.name)}-${Date.now()}`
+    //     )
+    //     return bookName
+    //   }
+    // },
 
-            // This can be downloaded directly:
-            const xhr = new XMLHttpRequest();
-            xhr.responseType = 'blob';
-            xhr.onload = (event) => {
-              const blob = xhr.response;
-              console.log({event: event, blob: blob})
-            };
-            xhr.open('GET', url);
-            xhr.send();
+    async downloadText(snapshotRef) {
+      return getDownloadURL(snapshotRef)
+          .then(async (url) => {
+            const response = await fetch(url)
+            if (response.ok) {
+              return Promise.resolve(await response.json())
+            } else {
+              return Promise.reject(response.status)
+            }
           })
           .catch((error) => {
-            console.log(error)
+            return Promise.reject({'getDownloadURL': error})
           });
     },
     resetBook() {
@@ -271,10 +299,13 @@ export default {
 
         if (docSnap.exists()) {
           const book = docSnap.data()
+          const textRef = ref(storage, book.textLink);
           this.bookId = docSnap.id
           this.genres = [...book.genres]
-          console.log("Document data:",);
           this.book = {...book}
+          this.text = await this.downloadText(textRef)
+          await this.$nextTick()
+          this.autoResize()
         } else {
           console.log("No such document!");
         }

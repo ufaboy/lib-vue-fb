@@ -27,6 +27,12 @@
 
 <script>
 import {defineAsyncComponent} from "vue";
+import { doc, getDoc } from "firebase/firestore";
+// eslint-disable-next-line no-unused-vars
+import {ref, getDownloadURL} from "firebase/storage";
+// eslint-disable-next-line no-unused-vars
+import {storage} from "@/firebase.js";
+import {db} from "@/firebase";
 
 const apiUrl = process.env.VUE_APP_API_URL
 
@@ -52,16 +58,41 @@ export default {
   }),
   methods: {
     async loadBook() {
-      const url = `/book/view?id=${this.$route.params.id}`;
-      const result = await this.$get(url)
-      if (result) {
-        this.book = await this.prepareUrlForMedia(result)
-        document.title = `Book: ${result.name}`;
-        this.$emit('loaded-book', {name: result.name, genre: result.genres[0]})
-        this.scrollToBookmark()
+      const docRef = doc(db, "books", this.$route.params.id);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        this.book = docSnap.data()
+        this.book.text = await this.downloadText(this.book.textLink)
+        document.title = `Book: ${this.book.name}`;
       } else {
-        console.log({'result': result})
+        console.log("No such document!");
       }
+      // const url = `/book/view?id=${this.$route.params.id}`;
+      // const result = await this.$get(url)
+      // if (result) {
+      //   this.book = await this.prepareUrlForMedia(result)
+      //   document.title = `Book: ${result.name}`;
+      //   this.$emit('loaded-book', {name: result.name, genre: result.genres[0]})
+      //   this.scrollToBookmark()
+      // } else {
+      //   console.log({'result': result})
+      // }
+    },
+    async downloadText(textLink) {
+      const textRef = ref(storage, textLink);
+      return getDownloadURL(textRef)
+          .then(async (url) => {
+            const response = await fetch(url)
+            if (response.ok) {
+              return Promise.resolve(await response.json())
+            } else {
+              return Promise.reject(response.status)
+            }
+          })
+          .catch((error) => {
+            return Promise.reject({'getDownloadURL': error})
+          });
     },
     async scrollToBookmark() {
       if (this.book.bookmark) {

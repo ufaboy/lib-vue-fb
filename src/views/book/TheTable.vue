@@ -115,7 +115,6 @@ export default {
       return date ? date.toLocaleString('ru-RU', {year: '2-digit', month: '2-digit', day: 'numeric'}) : null
     },
     async openBook(book, type) {
-      console.log({book: book})
       const comicsBook = book.genres.findIndex(genre => genre.division === 'comics') > -1
       await this.$router.push({
         name: type === 'edit' ? 'book-edit' : comicsBook ? 'book-media' : 'book-view',
