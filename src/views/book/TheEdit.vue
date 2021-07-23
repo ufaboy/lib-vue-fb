@@ -45,12 +45,12 @@
       </form-field>
       <section class="section genre" @click="openGenreModal">
         <div class="value row">
-          <span v-if="genres.length === 0">Не выбраны жанры</span>
+          <span v-if="book.genres.length === 0">Не выбраны жанры</span>
           <span class="value genre-span"
                 :style="{color: colorizeGenre(index)}"
-                v-for="(genre, index) of genres"
-                :key="index">
-            {{ genre.name }}
+                v-for="(genre, index) of book.genres"
+                :key="genre + index">
+            {{ genre }}
           </span>
         </div>
       </section>
@@ -159,6 +159,7 @@ export default {
       name: null,
       annotation: '',
       textLink: '',
+      genres: [],
       source: null,
       cover: null,
       rating: null,
@@ -166,7 +167,6 @@ export default {
       files: [],
     },
     text: '',
-    genres: [],
     editor: 'raw',
     expandText: false,
     expandIllustration: false,
@@ -191,16 +191,18 @@ export default {
         if (this.bookId) {
           const bookRef = doc(db, "books", this.bookId);
           linkSavedText = await this.saveTextToFile(this.book.textLink)
+          console.log({linkSavedText: linkSavedText})
           if (linkSavedText) {
             this.book.textLink = linkSavedText
-            result = await updateDoc(bookRef, {...this.book, genres: this.genres});
+            console.log({updateDoc: bookRef, book: this.book})
+            result = await updateDoc(bookRef, {...this.book});
           }
 
         } else {
           linkSavedText = await this.saveTextToFile()
           if (linkSavedText) {
             this.book.textLink = linkSavedText
-            result = await addDoc(collection(db, "books"), {...this.book, genres: this.genres});
+            result = await addDoc(collection(db, "books"), {...this.book});
           }
         }
 
@@ -212,39 +214,19 @@ export default {
       this.$loader.hide()
     },
     async saveTextToFile(oldTextRef) {
+      console.log({saveTextToFile: oldTextRef})
       const textBlob = new Blob([JSON.stringify(this.text)], {
         type: 'text/html'
       });
-      // const bookTextRef = await this.calcBookTextRef(oldTextRef)
-      const bookTextRef = oldTextRef ? oldTextRef : ref(storage, `books/book-${await translit(this.book.name)}-${Date.now()}`)
-      console.log({bookTextRef: bookTextRef})
-      return uploadBytes(bookTextRef, textBlob).then(async (snapshot) => {
+      const bookTextRef = oldTextRef ? ref(storage, oldTextRef) : ref(storage, `books/book-${await translit(this.book.name)}-${Date.now()}`)
+      return uploadBytes(bookTextRef, textBlob)
+          .then(async (snapshot) => {
         const result = await this.downloadText(snapshot.ref)
         if (result) {
           return Promise.resolve(snapshot.ref.fullPath)
         } else return Promise.reject({'uploadBytes': result})
       });
     },
-    // async calcBookTextRef(oldTextRef) {
-    //   if (oldTextRef) {
-    //     return oldTextRef
-    //   } else {
-    //     let bookName = `books/book-${await translit(this.book.name)}`
-    //     let bookTextRef = ref(storage, bookName)
-    //     bookTextRef.getMetadata()
-    //         .addOnSuccessListener( ()=>{
-    //           return ref(storage, bookName)}
-    //   )
-    //         .addOnFailureListener({
-    //           //File do not exist
-    //           UploadTask uploadTask = uploadRef.putFile(file);
-    //         })
-    //     storage.child(bookName).then(
-    //         bookName = `books/book-${await translit(this.book.name)}-${Date.now()}`
-    //     )
-    //     return bookName
-    //   }
-    // },
 
     async downloadText(snapshotRef) {
       return getDownloadURL(snapshotRef)
@@ -266,6 +248,7 @@ export default {
         name: null,
         annotation: '',
         text: '',
+        genres: [],
         source: null,
         cover_id: null,
         cover_url: null,
@@ -282,7 +265,7 @@ export default {
         messages.push('empty name')
         validation = false
       }
-      if (this.genres.length < 1) {
+      if (this.book.genres.length < 1) {
         messages.push('choose at least one genre')
         validation = false
       }
@@ -309,18 +292,6 @@ export default {
         } else {
           console.log("No such document!");
         }
-        // const url = `/book/view?id=${this.$route.params.id}`
-        // const result = await this.$get(url)
-        // if (result) {
-        //   // this.book = Object.assign({}, result)
-        //   this.book = {...result, annotation: result.annotation ? result.annotation : ''}
-        //   this.genres = [...result.genres]
-        //   this.files.push(...result.files)
-        //   await this.$nextTick()
-        //   this.autoResize()
-        // } else {
-        //   console.log(result)
-        // }
       } else {
         return false
       }
@@ -460,7 +431,7 @@ export default {
       this.$modal.show('genreBook', this)
     },
     setGenres(e) {
-      this.genres = e
+      this.book.genres = e
     },
     colorizeGenre(i) {
       const color = ['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE', 'DeepSkyBlue', 'PURPLE',]
@@ -476,12 +447,6 @@ export default {
     }
   },
   watch: {
-    genres: {
-      handler: function () {
-        this.book.ad = this.genres.findIndex(item => item.ad) > -1
-      },
-      deep: true
-    },
   },
   created() {
     this.getBook();
@@ -581,7 +546,7 @@ export default {
       top: -13px;
       left: 13px;
       padding: 0 3px;
-      background-color: var(--background-2);
+      background-color: var(--surface2);
       border-radius: 5px;
     }
 

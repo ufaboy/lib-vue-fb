@@ -15,7 +15,7 @@
         </optgroup>
       </select>
     </header>
-    <section class="book" v-for="book of data.items" @click="openBook(book)" :key="'book'+book.id">
+    <section class="book" v-for="book of books" @click="openBook(book)" :key="'book'+book.id">
       <img :src="getCover(book)" alt="" class="book-cover">
       <div class="book-text-wrap">
         <div class="book-name">{{ book.name }}</div>
@@ -32,7 +32,10 @@
 </template>
 
 <script>
+import { getDocs , query, where, collection } from "firebase/firestore";
+import {db} from "@/firebase";
 import SortingModal from '@/components/SortingModal.vue'
+
 export default {
   name: "ListBook",
   components: {
@@ -40,11 +43,7 @@ export default {
   },
   props: {},
   data: () => ({
-    data: {
-      items: [],
-      _links: {},
-      _meta: {}
-    },
+    books: [],
     searchParams: null,
     activeGenre: null,
     activeParent: null,
@@ -66,9 +65,6 @@ export default {
     }
   },
   watch: {
-    // activeGenre: function (newVal) {
-    //   this.prepareGenre(newVal)
-    // },
     genres: function () {
       this.prepareGenre()
     }
@@ -77,7 +73,7 @@ export default {
     document.title = 'Books';
   },
   mounted() {
-    this.prepareGenre()
+    // this.prepareGenre()
   },
   methods: {
     async searchByName() {
@@ -85,40 +81,55 @@ export default {
       this.loadBooks()
     },
     async loadBooks(method = null) {
-      let genreId = this.activeGenre ? this.activeGenre.id : this.$route.params.id ? this.$route.params.id : null
-      if (genreId === null) {
-        return false
-      }
-      if (!this.infinityState && method) {
-        return false
-      } else if (method === null) {
-        this.infinityState = true
-      }
-      let url = `/book?page=${this.page}&limit=${this.limit}&sort=${this.ascending ? '' : '-'}${this.orderBy ? this.orderBy : 'id'}&genre_id=${genreId}`
+      const genreName = this.$route.params.name
+      const booksRef = collection(db, "books");
 
-      if (this.searchParams) {
-        url += `&name=${this.searchParams}`
-      }
-      this.infinityLoading = true
-      this.$loader.show()
-      const result = await this.$get(url);
-      this.$loader.hide()
-      this.infinityLoading = false
-      if (result) {
-        if (method === 'push') {
-          this.data.items.push(...result.items)
-          this.page = ++this.page
+      const q = query(booksRef, where("genres", "array-contains", genreName));
+      const querySnapshot = await getDocs(q);
+      querySnapshot.forEach((doc) => {
+        if (method) {
+          this.books.push({id: doc.id, ...doc.data()})
         } else {
-          this.data.items.length = 0
-          this.data.items.push(...result.items)
-          this.page = ++this.page
+          this.books.splice(0, this.books.length)
+          this.books.push({id: doc.id, ...doc.data()})
         }
-        if (result.items.length < this.limit) {
-          this.infinityState = false
-        }
-
-      }
+      });
     },
+    // async loadBooks(method = null) {
+    //   let genreId = this.activeGenre ? this.activeGenre.id : this.$route.params.id ? this.$route.params.id : null
+    //   if (genreId === null) {
+    //     return false
+    //   }
+    //   if (!this.infinityState && method) {
+    //     return false
+    //   } else if (method === null) {
+    //     this.infinityState = true
+    //   }
+    //   let url = `/book?page=${this.page}&limit=${this.limit}&sort=${this.ascending ? '' : '-'}${this.orderBy ? this.orderBy : 'id'}&genre_id=${genreId}`
+    //
+    //   if (this.searchParams) {
+    //     url += `&name=${this.searchParams}`
+    //   }
+    //   this.infinityLoading = true
+    //   this.$loader.show()
+    //   const result = await this.$get(url);
+    //   this.$loader.hide()
+    //   this.infinityLoading = false
+    //   if (result) {
+    //     if (method === 'push') {
+    //       this.data.items.push(...result.items)
+    //       this.page = ++this.page
+    //     } else {
+    //       this.data.items.length = 0
+    //       this.data.items.push(...result.items)
+    //       this.page = ++this.page
+    //     }
+    //     if (result.items.length < this.limit) {
+    //       this.infinityState = false
+    //     }
+    //
+    //   }
+    // },
     async changeGenre() {
       this.page = 1
       this.loadBooks()

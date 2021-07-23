@@ -40,12 +40,12 @@ const routes = [
     }
   },
   {
-    path: '/list-book/:id',
+    path: '/list-book/:name',
     name: 'list-book',
     component: ListBook
   },
   {
-    path: '/list-genre/:id',
+    path: '/list-genre/:name',
     name: 'list-genre',
     component: ListGenre
   },

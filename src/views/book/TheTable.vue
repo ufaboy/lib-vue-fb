@@ -26,7 +26,7 @@
         <td class="td" :class="columnsClasses.name" @click="openBook(book, 'view')">{{ book.name }}</td>
         <td class="td" :class="columnsClasses.annotation" @click="openBook(book, 'edit')">{{ book.annotation }}</td>
         <td class="td" :class="columnsClasses.genres">
-          <div v-for="(genre, index) of book.genres" :key="index">{{ book.genres.length ? genre.name : '' }}</div>
+          <div v-for="(genre, index) of book.genres" :key="index">{{ book.genres.length ? genre : '' }}</div>
         </td>
         <td class="td" :class="columnsClasses.rating">{{ book.rating }}</td>
         <td class="td" :class="columnsClasses.view_count">{{ book.view_count }}</td>

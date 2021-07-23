@@ -72,7 +72,7 @@ export default {
   },
   methods: {
     sendGenre() {
-      this.$emit('set-genres', this.selectedGenre)
+      this.$emit('set-genres', this.selectedGenre.map(genre => genre.name))
       this.closeModal()
     },
     calcCheckedChildes(e) {
@@ -88,7 +88,13 @@ export default {
         } else {
           this.divisionsWithChildes.push({name: genre.division, childGenres: [genre]})
         }
+        this.addGenreToSelectedFromProps(genre)
       });
+    },
+    addGenreToSelectedFromProps(genre) {
+      if (this.genresProps && Array.isArray(this.genresProps) && this.genresProps.includes(genre.name)) {
+        this.selectedGenre.push(genre)
+      }
     },
     colorizeGenre(i) {
       const color = ['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE', 'DeepSkyBlue', 'PURPLE',]

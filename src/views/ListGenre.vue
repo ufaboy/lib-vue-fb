@@ -1,15 +1,15 @@
 <template>
   <div class="list-genre">
-    <header class="header" v-if="$store.state.main.isMobile">
-      <select class="select" v-model="activeParent">
-        <option class="option" :value="genre" v-for="genre of genresParent" :key="genre.id">
-          {{ genre.name }}
+    <header class="header" v-if="isMobile">
+      <select class="select" v-model="activeDivision">
+        <option class="option" :value="division.name" v-for="(division, index) of divisions" :key="index">
+          {{ division.name }}
         </option>
       </select>
     </header>
     <section class="genre"
              v-for="genre of genres"
-             :key="'genre'+genre.id"
+             :key="'genre'+ genre.id"
              @click="openGenre(genre)">{{ genre.name }}
     </section>
     <!--    <observer @intersect="loadGenres('push')"/>-->
@@ -18,35 +18,39 @@
 </template>
 
 <script>
+import { getDocs , collection, query, where } from "firebase/firestore";
+import {db} from "@/firebase";
 
 export default {
   name: "ListGenre",
   components: {},
   props: {},
   data: () => ({
-    activeParent: {
+    activeDivision: {
       childes: []
     },
+    divisions: [],
     genres: []
   }),
   computed: {
     genresParent() {
       return this.$store.state.genre.items
     },
+    isMobile() {
+      return this.$store.state.main.isMobile
+    },
   },
 
   watch: {
-    genresParent: function () {
-      this.prepareGenres()
-    },
-    activeParent: function (newValue) {
-      this.prepareGenres(newValue)
+    activeDivision: function (newValue) {
+      this.loadGenres(newValue)
     }
   },
   created() {
     document.title = 'Genres';
-    if (this.$route.params.id) {
-      this.prepareGenres()
+    this.loadDivisions()
+    if (this.$route.params.name) {
+      this.loadGenres(this.$route.params.name)
     }
   },
   mounted() {
@@ -54,22 +58,34 @@ export default {
   },
   methods: {
     openGenre(genre) {
-      this.$router.push({name: 'list-book',
+      this.$router.push({
+        name: 'list-book',
         params: {
-          'id': genre.id,
           name: genre.name,
-          parent: this.genresParent.find(item => item.id === +this.$route.params.id).name
+          division: this.activeDivision
         }
       })
     },
-    async prepareGenres(element = null) {
-      const genreId = element ? element.id : +this.$route.params.id
-      const parent = this.genresParent.find(item => item.id === genreId)
-      if (parent) {
-        this.activeParent = parent
-        this.genres = parent.childes
-        this.$emit('loaded-parent', {name: parent.name, id: parent.id})
+    async loadGenres(division) {
+      const genresRef = collection(db, "genres");
+      const q = query(genresRef, where("division", "==", division));
+
+      try {
+        const querySnapshot = await getDocs(q);
+        this.genres.splice(0, this.genres.length)
+        querySnapshot.forEach((genre) => {
+          this.genres.push({id: genre.id, ...genre.data()})
+        });
+        this.activeDivision = division
+      } catch (e) {
+        console.log({loadGenres: e})
       }
+    },
+    async loadDivisions() {
+      const divisions = await getDocs(collection(db, "divisions"));
+      divisions.forEach((doc) => {
+        this.divisions.push(doc.data())
+      });
     },
   },
 }

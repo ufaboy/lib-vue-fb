@@ -2,7 +2,7 @@
 <main class="home">
   <nav class="nav">
     <router-link class="content-link"
-               :to="{ name: 'list-genre', params: { id: genre.id }}"
+               :to="{ name: 'list-genre', params: { name: genre.name }}"
                v-for="genre of divisions"
                :key="genre.id">{{ genre.name }}
     </router-link>

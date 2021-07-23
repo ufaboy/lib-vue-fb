@@ -49,7 +49,7 @@
         </ul>
       </div>
     </header>
-    <slot :divisions="divisions"/>
+    <slot />
   </div>
 </template>
 
@@ -68,9 +68,7 @@ export default {
     activeBurger: false,
   }),
   methods: {
-
     getUsername() {
-
     }
   },
   computed: {
