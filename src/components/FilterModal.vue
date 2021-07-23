@@ -167,7 +167,7 @@ export default {
     }
 
     label:active:after {
-      width: 130px;
+      width: 70px;
     }
   }
 

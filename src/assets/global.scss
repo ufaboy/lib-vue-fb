@@ -32,21 +32,18 @@ input {
   outline: none;
 }
 
-select {
+.select {
+  color: var(--text2);
   background-color: var(--surface2);
   border-color: transparent;
   border-radius: 5px;
+  padding: 5px;
 }
 
 .modal {
   color: var(--text2);
   background-color: var(--surface3);
   border-radius: 1rem;
-}
-.select {
-  padding: 5px;
-  background-color: var(--surface3);
-  color: var(--text2);
 }
 
 .icon {

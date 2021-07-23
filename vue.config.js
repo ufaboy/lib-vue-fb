@@ -1,5 +1,5 @@
 module.exports = {
-  publicPath: process.env.NODE_ENV === 'production' ? '/lib-vue-fb/' : '/',
+  // publicPath: process.env.NODE_ENV === 'production' ? '/lib-vue-fb/' : '/',
   pwa: {
     name: 'Library',
     themeColor: '#4285f4',
